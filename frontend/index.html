@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Codex 语音对话</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>🎙️ Codex 语音对话</h1>
+    <div id="status" class="status">就绪</div>
+  </header>
+
+  <div class="main">
+    <!-- ===== 左栏：设置与参数 ===== -->
+    <aside class="left">
+      <section class="panel">
+        <h2>🎛 设备</h2>
+        <div class="field">
+          <label for="micSel">麦克风</label>
+          <div class="inrow">
+            <select id="micSel"></select>
+            <button id="refreshDev" class="mini" title="重新扫描设备">🔄</button>
+          </div>
+          <label for="spkSel">扬声器</label>
+          <select id="spkSel"></select>
+          <div class="hint" id="devHint"></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>🔊 音量</h2>
+        <div class="field">
+          <label for="inputGain">输入增益 <span id="igVal">1.2</span></label>
+          <input type="range" id="inputGain" min="0.5" max="3" step="0.1" value="1.2">
+          <label for="outputVol">输出音量 <span id="ovVal">1.0</span></label>
+          <input type="range" id="outputVol" min="0" max="2" step="0.05" value="1">
+          <div class="meters">
+            <span>输入 <meter id="inMeter" min="0" max="100" low="10" high="60"></meter></span>
+            <span>输出 <meter id="outMeter" min="0" max="100" low="30" high="80"></meter></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>🗣 对话模式</h2>
+        <div class="field">
+          <label class="radio"><input type="radio" name="mode" id="modeAuto" checked> 自动（说完自动断句）</label>
+          <label class="radio"><input type="radio" name="mode" id="modePtt"> 按键（按住说话）</label>
+          <label class="radio"><input type="checkbox" id="previewToggle" checked> 发送前预览识别结果（可修改）</label>
+          <label class="radio"><input type="checkbox" id="showActivity" checked> 显示 Codex 思考与操作（实时命令/输出）</label>
+        </div>
+        <div class="field">
+          <label for="sensSel">灵敏度
+            <select id="sensSel">
+              <option value="high">高（轻声也触发）</option>
+              <option value="mid" selected>中</option>
+              <option value="low">低（需大声）</option>
+            </select>
+          </label>
+          <label for="silenceSel">静音判定
+            <select id="silenceSel">
+              <option value="short">短（450ms）</option>
+              <option value="mid" selected>中（700ms）</option>
+              <option value="long">长（1100ms）</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>🎤 语音（TTS）</h2>
+        <div class="field">
+          <label for="voiceSel">音色
+            <select id="voiceSel"></select>
+          </label>
+          <label for="rateSel">语速
+            <select id="rateSel">
+              <option value="-30%">慢（-30%）</option>
+              <option value="-15%">稍慢（-15%）</option>
+              <option value="+0%" selected>正常</option>
+              <option value="+15%">稍快（+15%）</option>
+              <option value="+30%">快（+30%）</option>
+            </select>
+          </label>
+          <label for="pitchSel">语调
+            <select id="pitchSel">
+              <option value="-10Hz">低沉（-10Hz）</option>
+              <option value="-5Hz">略低（-5Hz）</option>
+              <option value="+0Hz" selected>正常</option>
+              <option value="+5Hz">略高（+5Hz）</option>
+              <option value="+10Hz">偏高（+10Hz）</option>
+            </select>
+          </label>
+          <button id="testVoice" class="mini wide">▶ 试听当前音色</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>🔘 按键说话</h2>
+        <div class="field">
+          <label for="pttModeSel">录音方式
+            <select id="pttModeSel">
+              <option value="hold">按住键说话（松开即发送）</option>
+              <option value="toggle" selected>双键切换（一键开始 / 一键发送）</option>
+            </select>
+          </label>
+
+          <div id="holdKeyRow" style="display:none">
+            <label>说话键（按住）
+              <div class="inrow">
+                <button id="keyHold" class="wide">空格</button>
+                <button id="keyHoldReset" class="mini" title="重置为空格">↺</button>
+              </div>
+            </label>
+          </div>
+
+          <div id="toggleKeyRow">
+            <label>开始录音键
+              <div class="inrow">
+                <button id="keyStart" class="wide">F8</button>
+                <button id="keyStartReset" class="mini" title="重置为 F8">↺</button>
+              </div>
+            </label>
+            <label>结束并发送键
+              <div class="inrow">
+                <button id="keyStop" class="wide">F9</button>
+                <button id="keyStopReset" class="mini" title="重置为 F9">↺</button>
+              </div>
+            </label>
+          </div>
+          <div class="hint" id="pttHint">双键模式：按“开始键”录音，说完了按“结束键”发送。点击键位按钮可自定义。</div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>⚡ 控制</h2>
+        <div class="ctrl">
+          <button id="startBtn" class="primary">▶ 开始对话</button>
+          <button id="stopBtn" disabled>⏹ 停止</button>
+        </div>
+      </section>
+    </aside>
+
+    <!-- ===== 右栏：对话 ===== -->
+    <section class="right">
+      <div id="thinking" class="thinking" style="display:none">
+        <div class="spinner"></div><span id="thinkingText">Codex 思考中…</span>
+      </div>
+      <div class="toolbar">
+        <span id="convIdLabel" class="conv-id">会话：-</span>
+        <button id="newConv" class="mini" title="清空会话ID，开始新对话">🔄 新会话</button>
+        <button id="copyConvId" class="mini" title="复制 codex exec resume 命令">📋 复制ID</button>
+        <button id="resumeBtn" class="mini" title="在 Codex 终端里恢复此对话">💻 终端恢复</button>
+        <button id="exportMd" class="mini" title="把对话记录导出为 Markdown">📥 导出MD</button>
+      </div>
+      <div id="transcript" class="transcript"></div>
+      <div id="previewBox" class="preview" style="display:none">
+        <div class="preview-title">🔎 识别结果预览（可修改后发送）</div>
+        <textarea id="previewText" rows="3" placeholder="识别结果…"></textarea>
+        <div class="preview-btns">
+          <button id="previewSend" class="primary">✅ 确认发送</button>
+          <button id="previewRedo">🔁 重新录音</button>
+          <button id="previewCancel">✖ 取消</button>
+        </div>
+      </div>
+      <div class="talk-area">
+        <button id="talkBtn" class="talk" style="display:none">按住说话</button>
+      </div>
+    </section>
+  </div>
+
+  <footer>本地运行 · 数据不离开本机 · 设备/音色/音量在左侧设置</footer>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
